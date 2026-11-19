@@ -14,9 +14,20 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.7
-      - name: Build
+      - name: Find project
         run: |
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          shopt -s nullglob
+          for z in *.zip; do unzip -oq "$z" -d unzipped_"${z%.zip}"; done
+          DIR=$(find . -name 'settings.gradle*' -not -path '*/.git/*' | head -1 | xargs -r dirname)
+          if [ -z "$DIR" ]; then
+            echo "لم أجد settings.gradle في المستودع. الملفات الموجودة:"
+            find . -maxdepth 3 -not -path './.git*' | head -50
+            exit 1
+          fi
+          echo "PROJECT_DIR=$DIR" >> $GITHUB_ENV
+      - name: Build
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
           if [ -f ./gradlew ]; then
             chmod +x ./gradlew && ./gradlew assembleDebug --stacktrace
           else
